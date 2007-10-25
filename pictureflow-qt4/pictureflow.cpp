@@ -35,6 +35,10 @@
 #include <QVector>
 #include <QWidget>
 
+// uncomment this to enable bilinear filtering for texture mapping
+// gives much better rendering, at the cost of memory space
+// #define PICTUREFLOW_BILINEAR_FILTER
+
 // for fixed-point arithmetic, we need minimum 32-bit long
 // long long (64-bit) might be useful for multiplication and division
 typedef long PFreal;
@@ -492,6 +496,9 @@ void PictureFlowPrivate::resetSlides()
   }
 }
 
+#define BILINEAR_STRETCH_HOR 4
+#define BILINEAR_STRETCH_VER 4
+
 static QImage prepareSurface(QImage img, int w, int h)
 {
   Qt::TransformationMode mode = Qt::SmoothTransformation;
@@ -525,6 +532,12 @@ static QImage prepareSurface(QImage img, int w, int h)
       int b = qBlue(color)  * a / 256 * (hte - y) / hte * 3/5;
       result.setPixel(h+hofs+y, x, qRgb(r, g, b));
     }
+
+#ifdef PICTUREFLOW_BILINEAR_FILTER
+  int hh = BILINEAR_STRETCH_VER*hs;
+  int ww = BILINEAR_STRETCH_HOR*w;
+  result = result.scaled(hh, ww, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+#endif
 
   return result;
 }
@@ -653,8 +666,13 @@ int col1, int col2)
 
   QRect rect(0, 0, 0, 0);  
   
+#ifdef PICTUREFLOW_BILINEAR_FILTER
+  int sw = src->height() / BILINEAR_STRETCH_HOR;
+  int sh = src->width() / BILINEAR_STRETCH_VER;
+#else
   int sw = src->height();
   int sh = src->width();
+#endif
   int h = buffer.height();
   int w = buffer.width();
 
@@ -700,9 +718,15 @@ int col1, int col2)
     PFreal hitx = fmul(dist, rays[x]);
     PFreal hitdist = fdiv(hitx - slide.cx, sdx);
 
+#ifdef PICTUREFLOW_BILINEAR_FILTER
+    int column = sw*BILINEAR_STRETCH_HOR/2 + (hitdist*BILINEAR_STRETCH_HOR >> PFREAL_SHIFT);
+    if(column >= sw*BILINEAR_STRETCH_HOR)
+      break;
+#else
     int column = sw/2 + (hitdist >> PFREAL_SHIFT);
     if(column >= sw)
       break;
+#endif
     if(column < 0)
       continue;
 
@@ -717,9 +741,15 @@ int col1, int col2)
     QRgb* pixel2 = (QRgb*)(buffer.scanLine(y2)) + x;
     QRgb pixelstep = pixel2 - pixel1;
 
+#ifdef PICTUREFLOW_BILINEAR_FILTER
+    int center = (sh*BILINEAR_STRETCH_VER/2);
+    int dy = dist*BILINEAR_STRETCH_VER / h;
+#else
+    int center = (sh/2);
     int dy = dist / h;
-    int p1 = (sh/2)*PFREAL_ONE - dy/2;
-    int p2 = (sh/2)*PFREAL_ONE + dy/2;
+#endif
+    int p1 = center*PFREAL_ONE - dy/2;
+    int p2 = center*PFREAL_ONE + dy/2;
 
     const QRgb *ptr = (const QRgb*)(src->scanLine(column));
     if(alpha == 256)
