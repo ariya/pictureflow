@@ -2,6 +2,7 @@
   PictureFlow - animated image show widget
   http://pictureflow.googlecode.com
 
+  Copyright (C) 2008 Ariya Hidayat (ariya@kde.org)
   Copyright (C) 2007 Ariya Hidayat (ariya@kde.org)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -50,6 +51,14 @@ Q_OBJECT
   Q_PROPERTY(int centerIndex READ centerIndex WRITE setCenterIndex)
 
 public:
+
+  enum ReflectionEffect
+  {
+    NoReflection,
+    PlainReflection,
+    BlurredReflection
+  };
+
   /*!
     Creates a new PictureFlow widget.
   */  
@@ -60,8 +69,14 @@ public:
   */
   ~PictureFlow();
 
+  /*!
+    Returns the background color.
+  */
   QColor backgroundColor() const;
 
+  /*!
+    Sets the background color. By default it is black.
+  */
   void setBackgroundColor(const QColor& c);
 
   /*!
@@ -88,6 +103,17 @@ public:
     Returns the index of slide currently shown in the middle of the viewport.
   */  
   int centerIndex() const;
+
+  /*!
+    Returns the effect applied to the reflection.
+  */  
+  ReflectionEffect reflectionEffect() const;
+
+  /*!
+    Sets the effect applied to the reflection. The default is PlainReflection.
+  */  
+  void setReflectionEffect(ReflectionEffect effect);
+
 
 public slots:
 
