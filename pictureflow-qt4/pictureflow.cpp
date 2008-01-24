@@ -284,6 +284,7 @@ public:
 
   QImage buffer;
   QBasicTimer animateTimer;
+  QVector<QRect> slidesRect;
 
 private:
   PictureFlow* widget;
@@ -606,18 +607,24 @@ void PictureFlowPrivate::render()
 
   if(step == 0)
   {
+    slidesRect.clear();	
+    slidesRect.resize(11);
+
     // no animation, boring plain rendering
     for(int index = 0; index < nleft-1; index++)
     {
       int alpha = (index < nleft-2) ? 256 : 128;
       QRect rs = renderSlide(leftSlides[index], alpha, 0, c1-1);
+      slidesRect[index] = rs;
       if(!rs.isEmpty())
         c1 = rs.left();
     }  
+    slidesRect[5] = r;
     for(int index = 0; index < nright-1; index++)
     {
       int alpha = (index < nright-2) ? 256 : 128;
       QRect rs = renderSlide(rightSlides[index], alpha, c2+1, buffer.width());
+      slidesRect[6 + index] = rs;
       if(!rs.isEmpty())
         c2 = rs.right();
     }  
@@ -1058,6 +1065,14 @@ void PictureFlow::keyPressEvent(QKeyEvent* event)
   event->ignore();
 }
 
+void PictureFlow::mouseReleaseEvent (QMouseEvent *event) {
+	showSlideAt(event->x(), event->y());
+}
+
+void PictureFlow::mouseMoveEvent (QMouseEvent *event) {
+	showSlideAt(event->x(), event->y());
+}
+
 void PictureFlow::paintEvent(QPaintEvent* event)
 {
   Q_UNUSED(event);
@@ -1078,4 +1093,25 @@ void PictureFlow::timerEvent(QTimerEvent* event)
     d->updateAnimation();
   else
     QWidget::timerEvent(event);
+}
+
+void PictureFlow::showSlideAt (int x, int y) {
+	if (d->slidesRect[5].contains(x, y))
+		return;
+
+	if (x < d->slidesRect[5].x()) {
+		for (int i=0; i < 5; ++i) {
+			if (d->slidesRect[i].contains(x, y)) {
+				showSlide(d->currentSlide() - (i + 1));
+				return;
+			}
+		}
+	} else {
+		for (int i=6; i < 11; ++i) {
+			if (d->slidesRect[i].contains(x, y)) {
+				showSlide(d->currentSlide() + (i - 5));
+				return;
+			}
+		}
+	}
 }

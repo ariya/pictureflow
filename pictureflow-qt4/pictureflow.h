@@ -150,10 +150,15 @@ public slots:
 
 
 protected:
+  void mouseReleaseEvent (QMouseEvent *event);
+  void mouseMoveEvent (QMouseEvent *event);
   void paintEvent(QPaintEvent *event);
   void keyPressEvent(QKeyEvent* event);
   void resizeEvent(QResizeEvent* event);
   void timerEvent(QTimerEvent* event);
+
+private:
+	void showSlideAt (int x, int y);
 
 private:
   PictureFlowPrivate* d;
