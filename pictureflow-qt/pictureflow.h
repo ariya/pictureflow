@@ -177,6 +177,8 @@ public slots:
   */  
   void triggerRender();
 
+signals:
+  void centerIndexChanged(int index);
 
 protected:
   void paintEvent(QPaintEvent *event);
