@@ -70,8 +70,18 @@ int main( int argc, char ** argv )
 
   PictureFlow* w = new PictureFlow;
 
-  w->setSlideSize(QSize(150, 250));
-  w->resize(780, 350);
+
+#if defined(_WS_QWS) || defined(Q_WS_QWS)
+  w->showFullScreen();
+  int ww = w->width();
+  int wh = w->height();
+  int dim = (ww > wh) ? wh : ww;
+  dim = dim * 3 / 4;
+  w->setSlideSize(QSize(3*dim/5, dim));
+#else  
+  w->setSlideSize(QSize(3*40, 5*40));
+  w->resize(750, 270);
+#endif
 
   QStringList files = (argc > 1) ? findFiles(QString(argv[1])) : findFiles();
 
@@ -81,8 +91,8 @@ int main( int argc, char ** argv )
       w->addSlide(pixmap);
 
   w->setCenterIndex(w->slideCount()/2);
-  w->show();
   w->setBackgroundColor(Qt::white);
+  w->show();
 
   a.connect( &a, SIGNAL(lastWindowClosed()), &a, SLOT(quit()) );
   return a.exec();
