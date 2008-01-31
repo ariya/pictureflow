@@ -1211,6 +1211,14 @@ void PictureFlow::keyPressEvent(QKeyEvent* event)
   event->ignore();
 }
 
+void PictureFlow::mousePressEvent(QMouseEvent* event)
+{
+  if(event->x() > width()/2)
+    showNext();
+  else
+    showPrevious();
+}
+
 void PictureFlow::paintEvent(QPaintEvent* event)
 {
   Q_UNUSED(event);
