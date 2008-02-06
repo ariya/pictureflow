@@ -27,7 +27,7 @@
 #include <qapplication.h>
 #include <qdir.h>
 #include <qfileinfo.h>
-#include <qpixmap.h>
+#include <qimage.h>
 
 #include "pictureflow.h"
 
@@ -66,10 +66,8 @@ QStringList findFiles(const QString& path = QString())
 
 int main( int argc, char ** argv )
 {
-  QApplication a( argc, argv );
-
+  QApplication* app = new QApplication( argc, argv );
   PictureFlow* w = new PictureFlow;
-
 
 #if defined(_WS_QWS) || defined(Q_WS_QWS)
   w->showFullScreen();
@@ -85,15 +83,20 @@ int main( int argc, char ** argv )
 
   QStringList files = (argc > 1) ? findFiles(QString(argv[1])) : findFiles();
 
-  QPixmap pixmap;
+  QImage img;
   for(int i = 0; i < (int)files.count(); i++)
-    if(pixmap.load(files[i]))
-      w->addSlide(pixmap);
+    if(img.load(files[i]))
+      w->addSlide(img);
 
   w->setCenterIndex(w->slideCount()/2);
   w->setBackgroundColor(Qt::white);
   w->show();
 
-  a.connect( &a, SIGNAL(lastWindowClosed()), &a, SLOT(quit()) );
-  return a.exec();
+  app->connect( app, SIGNAL(lastWindowClosed()), app, SLOT(quit()) );
+  int result = app->exec();
+
+  delete w;
+  delete app;
+
+  return result;
 }
