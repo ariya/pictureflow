@@ -68,7 +68,6 @@
 #define qMin(x,y) ((x) < (y)) ? (x) : (y)
 
 #define QVector QValueVector
-#define QHash QMap
 
 #define toImage convertToImage
 #define contains find
@@ -94,7 +93,6 @@
 #define qMin(x,y) ((x) < (y)) ? (x) : (y)
 
 #define QVector QArray
-#define QHash QMap
 
 #define toImage convertToImage
 #define contains find
@@ -190,6 +188,7 @@ class PictureFlowState
 {
 public:
   PictureFlowState();
+  ~PictureFlowState();
 
   void reposition();
   void reset();
@@ -263,7 +262,7 @@ private:
 #endif
 #ifdef PICTUREFLOW_QT3
   QCache<QImage> surfaceCache;
-  QHash<int,QImage*> imageHash;
+  QMap<int,QImage*> imageHash;
 #endif
 #ifdef PICTUREFLOW_QT2
   QCache<QImage> surfaceCache;
@@ -282,6 +281,12 @@ PictureFlowState::PictureFlowState():
 backgroundColor(0), slideWidth(150), slideHeight(200),
 reflectionEffect(PictureFlow::BlurredReflection), centerIndex(0)
 {
+}
+
+PictureFlowState::~PictureFlowState()
+{
+  for(int i = 0; i < (int)slideImages.count(); i++)
+    delete slideImages[i];
 }
 
 // readjust the settings, call this when slide dimension is changed
@@ -499,6 +504,7 @@ PictureFlowAbstractRenderer(), size(0,0), bgcolor(0), effect(-1), blankSurface(0
 PictureFlowSoftwareRenderer::~PictureFlowSoftwareRenderer()
 {
   surfaceCache.clear();
+  buffer = QImage();
   delete blankSurface;
 }
 
@@ -543,7 +549,6 @@ void PictureFlowSoftwareRenderer::init()
   int w = (ww+1)/2;
   int h = (wh+1)/2;
 
-
 #ifdef PICTUREFLOW_QT4
   buffer = QImage(ww, wh, QImage::Format_RGB32);
 #endif
@@ -573,15 +578,15 @@ static QRgb blendColor(QRgb c1, QRgb c2, int blend)
 }
 
 
-static QImage* prepareSurface(const QImage& slideImage, int w, int h, QRgb bgcolor,
+static QImage* prepareSurface(const QImage* slideImage, int w, int h, QRgb bgcolor,
 PictureFlow::ReflectionEffect reflectionEffect)
 {
 #ifdef PICTUREFLOW_QT4
   Qt::TransformationMode mode = Qt::SmoothTransformation;
-  QImage img = slideImage.scaled(w, h, Qt::IgnoreAspectRatio, mode);
+  QImage img = slideImage->scaled(w, h, Qt::IgnoreAspectRatio, mode);
 #endif
 #if defined(PICTUREFLOW_QT3) || defined(PICTUREFLOW_QT2)
-  QImage img = slideImage.smoothScale(w, h);
+  QImage img = slideImage->smoothScale(w, h);
 #endif
 
   // slightly larger, to accomodate for the reflection
@@ -635,7 +640,7 @@ PictureFlow::ReflectionEffect reflectionEffect)
 
       // how many times blur is applied?
       // for low-end system, limit this to only 1 loop
-      for(int loop = 0; loop < 1; loop++)
+      for(int loop = 0; loop < 2; loop++)
       {
         for(int col = c1; col <= c2; col++)
         {
@@ -712,8 +717,8 @@ QImage* PictureFlowSoftwareRenderer::surface(int slideIndex)
   QString key = QString::number(slideIndex);
 #endif
 
-  QImage* img = state->slideImages[slideIndex];
-  bool empty = (!img) ? true : img->isNull();
+  QImage* img = state->slideImages.at(slideIndex);
+  bool empty = img ? img->isNull() : true;
   if(empty)
   {
     surfaceCache.remove(key);
@@ -739,7 +744,6 @@ QImage* PictureFlowSoftwareRenderer::surface(int slideIndex)
       painter.setBrush(QBrush());
       painter.drawRect(2, 2, sw-3, sh-3);
       painter.end();
-      blankSurface = prepareSurface(img, sw, sh, bgcolor, state->reflectionEffect);
 #endif
 #if defined(PICTUREFLOW_QT3) || defined(PICTUREFLOW_QT2)
       QPixmap pixmap(sw, sh, 32);
@@ -747,32 +751,45 @@ QImage* PictureFlowSoftwareRenderer::surface(int slideIndex)
       painter.fillRect(pixmap.rect(), QColor(192,192,192));
       painter.fillRect(5, 5, sw-10, sh-10, QColor(64,64,64));
       painter.end();
-      blankSurface = prepareSurface(pixmap.convertToImage(), sw, sh, bgcolor, state->reflectionEffect);
+      QImage img = pixmap.convertToImage();
 #endif
+
+      blankSurface = prepareSurface(&img, sw, sh, bgcolor, state->reflectionEffect);
     }
     return blankSurface;
   }
 
+#ifdef PICTUREFLOW_QT4
+  bool exist = imageHash.contains(slideIndex);
+  if(img == imageHash.find(slideIndex).value())
+#endif
+#ifdef PICTUREFLOW_QT3
+  bool exist = imageHash.find(slideIndex) != imageHash.end();
+  if(img == imageHash.find(slideIndex).data())
+#endif
+#ifdef PICTUREFLOW_QT2
   if(img == imageHash[slideIndex])
+#endif
     if(surfaceCache.contains(key))
-      return surfaceCache[key];
+        return surfaceCache[key];
 
-  surfaceCache.insert(key, prepareSurface(*img, state->slideWidth,
-    state->slideHeight, bgcolor, state->reflectionEffect));
+  QImage* sr = prepareSurface(img, state->slideWidth, state->slideHeight, bgcolor, state->reflectionEffect);
+  surfaceCache.insert(key, sr);
   imageHash.insert(slideIndex, img);
-  return surfaceCache[key];
+
+  return sr;
 }
 
 // Renders a slide to offscreen buffer. Returns a rect of the rendered area.
 // col1 and col2 limit the column for rendering.
 QRect PictureFlowSoftwareRenderer::renderSlide(const SlideInfo &slide, int col1, int col2)
 {
-  QImage* src = surface(slide.slideIndex);
-  if(!src)
-    return QRect();
-
   int blend = slide.blend;
   if(!blend)
+    return QRect();
+
+  QImage* src = surface(slide.slideIndex);
+  if(!src)
     return QRect();
 
   QRect rect(0, 0, 0, 0);
@@ -964,8 +981,8 @@ PictureFlow::PictureFlow(QWidget* parent): QWidget(parent)
 
 PictureFlow::~PictureFlow()
 {
-  delete d->animator;
   delete d->renderer;
+  delete d->animator;
   delete d->state;
   delete d;
 }
