@@ -26,9 +26,7 @@
 
 #include "pictureflow.h"
 
-// if enabled, Alt+F10 triggers the loop to measure the FPS (frame-per-seconds)
-#define PICTUREFLOW_BENCHMARK
-
+// detect Qt version
 #if QT_VERSION >= 0x040000
 #define PICTUREFLOW_QT4
 #elif QT_VERSION >= 0x030000
@@ -47,7 +45,6 @@
 #include <QKeyEvent>
 #include <QPainter>
 #include <QPixmap>
-#include <QTime>
 #include <QTimer>
 #include <QVector>
 #include <QWidget>
@@ -73,8 +70,6 @@
 #define contains find
 #define modifiers state
 #define ControlModifier ControlButton
-#define AltModifier AltButton
-#define setWindowTitle setCaption
 #endif
 
 #ifdef PICTUREFLOW_QT2
@@ -98,8 +93,6 @@
 #define contains find
 #define modifiers state
 #define ControlModifier ControlButton
-#define AltModifier AltButton
-#define setWindowTitle setCaption
 #define flush flushX
 #endif
 
@@ -761,10 +754,12 @@ QImage* PictureFlowSoftwareRenderer::surface(int slideIndex)
 
 #ifdef PICTUREFLOW_QT4
   bool exist = imageHash.contains(slideIndex);
+  if(exist)
   if(img == imageHash.find(slideIndex).value())
 #endif
 #ifdef PICTUREFLOW_QT3
   bool exist = imageHash.find(slideIndex) != imageHash.end();
+  if(exist)
   if(img == imageHash.find(slideIndex).data())
 #endif
 #ifdef PICTUREFLOW_QT2
@@ -964,18 +959,15 @@ PictureFlow::PictureFlow(QWidget* parent): QWidget(parent)
   setAttribute(Qt::WA_StaticContents, true);
   setAttribute(Qt::WA_OpaquePaintEvent, true);
   setAttribute(Qt::WA_NoSystemBackground, true);
-  setWindowTitle("PictureFlow");
 #endif
 #ifdef PICTUREFLOW_QT3
   setWFlags(getWFlags() | Qt::WStaticContents);
   setWFlags(getWFlags() | Qt::WNoAutoErase);
-  setCaption("PictureFlow");
 #endif
 #ifdef PICTUREFLOW_QT2
   setWFlags(getWFlags() | Qt::WPaintClever);
   setWFlags(getWFlags() | Qt::WRepaintNoErase);
   setWFlags(getWFlags() | Qt::WResizeNoErase);
-  setCaption("PictureFlow");
 #endif
 }
 
@@ -1171,60 +1163,6 @@ void PictureFlow::keyPressEvent(QKeyEvent* event)
     return;
   }
 
-#ifdef PICTUREFLOW_BENCHMARK
-  if(event->key() == Qt::Key_F10)
-  if(event->modifiers() == Qt::AltModifier)
-  {
-    qDebug("benchmarking.... please wait");
-    const int blit_count = 10;
-
-    QTime stopwatch;
-    stopwatch.start();
-    for(int i = 0; i < blit_count; i++)
-    {
-      d->renderer->dirty = true; repaint(); QApplication::flush(); QApplication::syncX();
-      d->renderer->dirty = true; repaint(); QApplication::flush(); QApplication::syncX();
-      d->renderer->dirty = true; repaint(); QApplication::flush(); QApplication::syncX();
-      d->renderer->dirty = true; repaint(); QApplication::flush(); QApplication::syncX();
-      d->renderer->dirty = true; repaint(); QApplication::flush(); QApplication::syncX();
-      d->renderer->dirty = true; repaint(); QApplication::flush(); QApplication::syncX();
-      d->renderer->dirty = true; repaint(); QApplication::flush(); QApplication::syncX();
-      d->renderer->dirty = true; repaint(); QApplication::flush(); QApplication::syncX();
-      d->renderer->dirty = true; repaint(); QApplication::flush(); QApplication::syncX();
-      d->renderer->dirty = true; repaint(); QApplication::flush(); QApplication::syncX();
-    }
-    QString msg;
-    int elapsed = stopwatch.elapsed();
-    if( elapsed > 0 )
-      msg = QString("FPS: %1").arg( blit_count*10*1000.0/elapsed );
-    else
-      msg = QString("Too fast. Increase blit_count");
-    setWindowTitle( msg );
-#ifdef PICTUREFLOW_QT4
-    qDebug("%s", qPrintable(msg));
-#endif
-    event->accept();
-    return;
-  }
-#endif // PICTUREFLOW_BENCHMARK
-
-#if 1
-  // for debugging only: Alt+F11 cycles the reflection effect
-  if(event->key() == Qt::Key_F11)
-  if(event->modifiers() == Qt::AltModifier)
-  {
-    qDebug("changing reflection effect...");
-    switch(reflectionEffect())
-    {
-      //case NoReflection:      setReflectionEffect(PlainReflection); break;
-      case PlainReflection:   setReflectionEffect(BlurredReflection); break;
-      case BlurredReflection: setReflectionEffect(PlainReflection); break;
-      default:                setReflectionEffect(PlainReflection); break;
-    }
-    event->accept();
-    return;
-  }
-#endif
   event->ignore();
 }
 
