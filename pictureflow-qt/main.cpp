@@ -2,6 +2,7 @@
   PictureFlow - animated image show widget
   http://pictureflow.googlecode.com
 
+  Copyright (C) 2009 Ariya Hidayat (ariya@kde.org)
   Copyright (C) 2008 Ariya Hidayat (ariya@kde.org)
   Copyright (C) 2007 Ariya Hidayat (ariya@kde.org)
 
@@ -24,15 +25,7 @@
   THE SOFTWARE.
 */
 
-#include <qapplication.h>
-#include <qdir.h>
-#include <qevent.h>
-#include <qfileinfo.h>
-#include <qimage.h>
-
-#if QT_VERSION >= 0x040000
-#include <QTime>
-#endif
+#include <QtGui>
 
 #include "pictureflow.h"
 
@@ -45,39 +38,12 @@ QStringList findFiles(const QString& path = QString())
     dir = QDir(path);
 
   dir.setFilter(QDir::Files | QDir::Hidden | QDir::NoSymLinks);
-#if QT_VERSION >= 0x040000
   QFileInfoList list = dir.entryInfoList();
   for (int i = 0; i < list.size(); ++i) 
-  {
-    QFileInfo fileInfo = list.at(i);
-    files.append(dir.absoluteFilePath(fileInfo.fileName()));
-  }
-#else
-  const QFileInfoList* list = dir.entryInfoList();
-  if(list) 
-  {
-    QFileInfoListIterator it( *list );
-    QFileInfo * fi;
-    while( (fi=it.current()) != 0 ) 
-    {
-      ++it;
-      files.append(dir.absFilePath(fi->fileName()));
-    }
-  }
-#endif
+    files += dir.absoluteFilePath(list.at(i).fileName());
 
   return files;
 }
-
-#if QT_VERSION < 0x040000
-#define modifiers state
-#define AltModifier AltButton
-#define setWindowTitle setCaption
-#endif
-
-#if QT_VERSION < 0x030000
-#define flush flushX
-#endif
 
 class Browser: public PictureFlow
 {
